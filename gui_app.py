@@ -160,6 +160,7 @@ class YouTubeDownloaderApp(ctk.CTk):
 
     def check_ffmpeg(self):
         """Checks if ffmpeg exists, downloads it if not (Windows only logic mostly, but safe elsewhere)."""
+        import tkinter.messagebox as messagebox
         ffmpeg_exe = "ffmpeg.exe" if os.name == 'nt' else "ffmpeg"
         
         if os.path.exists(ffmpeg_exe):
@@ -187,22 +188,32 @@ class YouTubeDownloaderApp(ctk.CTk):
                 # Extract ffmpeg.exe from the zip
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     # Find the path to ffmpeg.exe inside the zip (it's usually in a subfolder)
+                    found = False
                     for file in zip_ref.namelist():
                         if file.endswith("bin/ffmpeg.exe"):
                             source = zip_ref.open(file)
                             with open(ffmpeg_exe, "wb") as target:
                                 target.write(source.read())
                             source.close()
+                            found = True
                             break
+                    if not found:
+                         raise Exception("ffmpeg.exe not found in zip")
                 
                 # Cleanup
                 if os.path.exists(zip_path):
                     os.remove(zip_path)
-                    
-                return ffmpeg_exe
+                
+                if os.path.exists(ffmpeg_exe) and os.path.getsize(ffmpeg_exe) > 1024 * 1024:
+                    return ffmpeg_exe
+                else:
+                    raise Exception("Extracted file is invalid")
+
             except Exception as e:
                 print(f"Failed to download ffmpeg: {e}")
-                self.after(0, lambda: self.status_label.configure(text=f"FFmpeg download failed: {e}"))
+                self.after(0, lambda: self.status_label.configure(text=f"FFmpeg download failed. See popup."))
+                messagebox.showerror("Dependency Missing", 
+                    f"Could not download FFmpeg automatically.\n\nError: {e}\n\nPlease download 'ffmpeg-master-latest-win64-gpl.zip' from https://github.com/yt-dlp/FFmpeg-Builds/releases, extract 'ffmpeg.exe' (from the bin folder), and place it in this application's folder.")
                 return None
         return None
 
