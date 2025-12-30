@@ -1,0 +1,9 @@
+flask
+yt-dlp
+celery
+redis
+gunicorn
+gevent
+customtkinter
+Pillow
+requests

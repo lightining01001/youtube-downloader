@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Distribution / Build
+dist/
+build/
+*.spec
+
+# Application Data
+downloads/
+ffmpeg.exe
+ffmpeg
+
+# IDEs
+.vscode/
+.idea/
