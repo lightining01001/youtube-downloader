@@ -161,22 +161,48 @@ class YouTubeDownloaderApp(ctk.CTk):
     def check_ffmpeg(self):
         """Checks if ffmpeg exists, downloads it if not (Windows only logic mostly, but safe elsewhere)."""
         ffmpeg_exe = "ffmpeg.exe" if os.name == 'nt' else "ffmpeg"
-        if os.path.exists(ffmpeg_exe):
-            return ffmpeg_exe
         
-        # If on Windows and missing, try to download
+        if os.path.exists(ffmpeg_exe):
+            # Check if it's a valid size (heuristic: > 1MB) to avoid using a corrupt HTML file
+            if os.path.getsize(ffmpeg_exe) > 1024 * 1024:
+                return ffmpeg_exe
+            else:
+                try: os.remove(ffmpeg_exe) # Remove corrupt/small file
+                except: pass
+        
+        # If on Windows and missing (or was removed), try to download
         if os.name == 'nt':
             self.after(0, lambda: self.status_label.configure(text="Downloading required component (FFmpeg)..."))
             try:
-                # URL for a lightweight static build of ffmpeg
-                url = "https://github.com/eugeneware/ffmpeg-static/releases/download/b4.4/ffmpeg-win32-ia32.exe"
+                import zipfile
+                # URL for a reliable ffmpeg build (yt-dlp recommended)
+                url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
                 response = requests.get(url, stream=True)
-                with open(ffmpeg_exe, 'wb') as f:
+                
+                zip_path = "ffmpeg.zip"
+                with open(zip_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
+                
+                # Extract ffmpeg.exe from the zip
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    # Find the path to ffmpeg.exe inside the zip (it's usually in a subfolder)
+                    for file in zip_ref.namelist():
+                        if file.endswith("bin/ffmpeg.exe"):
+                            source = zip_ref.open(file)
+                            with open(ffmpeg_exe, "wb") as target:
+                                target.write(source.read())
+                            source.close()
+                            break
+                
+                # Cleanup
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+                    
                 return ffmpeg_exe
             except Exception as e:
                 print(f"Failed to download ffmpeg: {e}")
+                self.after(0, lambda: self.status_label.configure(text=f"FFmpeg download failed: {e}"))
                 return None
         return None
 
